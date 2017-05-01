@@ -1,0 +1,76 @@
+//Code for Calculating average from 5 IR readings
+#include <stdio.h>
+#include <time.h>
+#include "E101.h"
+int main() {
+init();
+int adc_reading;
+int mean=0;
+for (int x = 0;x<5;x++) {
+adc_reading = read_analog(0);
+mean = mean + adc_reading);
+sleep1(1, 000000);
+}
+printf("average reading:%d\n", mean / 5);
+
+//Code for driving robot straight ahead
+int main(){
+init();
+set_motor(1,155);
+sleep1(10,500000);
+set_motor(2, -155);
+sleep1(10,500000);
+return 0;
+}
+
+//Code for turning robot right
+int main (){
+init();
+int turnLeft(){
+set_motor(1,77.5); //Assume motor 1 is on the right
+sleep1(10,500000);
+set_motor(2,-155);//Turning right slowly
+sleep1(10,500000);
+return 0;
+}}
+
+//Code for turning robot left
+int main (){
+init();
+int turnLeft(){
+set_motor(1,155); //Assume motor 1 is on the right
+sleep1(10,500000);
+set_motor(2,-77.5);//Turning left slowly
+sleep1(10,500000);
+return 0;
+}}
+
+//Code for making robot reverse slowly
+int main(){
+init();
+set_motor(1,-155);
+sleep1(10,500000);
+set_motor(2, 155);
+sleep1(10,500000);
+return 0;
+}
+
+//Code for making robot reverse slowly if something is detected by IR sensor
+int main (){
+init();
+int adc_reading;
+for(int i=0; i<1000; i++) { //loops
+adc_reading=read_analog(0);
+sleep1(0,500000);
+if (adc_reading < 150) {When IR reading is less than 150 motor turns opposite dir
+set_motor(1,-150);
+sleep1(0,500000);
+}
+else{
+set_motor(1,150);//if IR reading isn't less than 150 motor turns original dir
+sleep1(0,500000);
+}
+printf("reading = %d\n" , adc_reading);//Prints the adc reading for checking purposes
+}
+return 0;
+}
