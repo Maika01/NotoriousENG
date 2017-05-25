@@ -1,76 +1,161 @@
-//Code for Calculating average from 5 IR readings
 #include <stdio.h>
 #include <time.h>
 #include "E101.h"
-int main() {
-init();
-int adc_reading;
-int mean=0;
-for (int x = 0;x<5;x++) {
-adc_reading = read_analog(0);
-mean = mean + adc_reading);
-sleep1(1, 000000);
+                void forward(int speed, int s, int micros) {
+                        set_motor(1, -speed);
+                        set_motor(2, speed);
+                        sleep1(s, micros);
+                }
+                void reverse(int speed, int s, int micros) {
+                        set_motor(1, speed);
+                        set_motor(2, -speed);
+                        sleep1(s, micros);
+                }
+                void right() {
+                        int speed = 50;
+                        set_motor(1, -speed);
+                        set_motor(2, -speed);
+                        sleep1(0, 600000);
+                }
+                void left() {
+                        int speed = 50;
+                        set_motor(1, -speed);
+                        set_motor(2, -speed);
+                        sleep1(0, 600000);
 }
-printf("average reading:%d\n", mean / 5);
+                void stop(int s, int micros) {
+                        set_motor(1, 0);
+                        set_motor(2, 0);
+                        sleep1(s, micros);
+                }
+//straight//straight//straight//left//right//right//left//left//right//right
 
-//Code for driving robot straight ahead
-int main(){
-init();
-set_motor(1,155);
-sleep1(10,500000);
-set_motor(2, -155);
-sleep1(10,500000);
-return 0;
-}
+        int main() {
+                init();
+                        int error = 0;
+                        int total_error = 0;
+                        int previous_error = 0;
+                        int error_diff = 0;
+                        int numWhitePixels = 0;
+                        int pSignal = 0;
+                        int iSignal = 0;
+                        int dSignal = 0;
+                        int totalSignal = 0;
+                        float kp = 0.5;
+                        float ki = 0;
+                        float kd = 0.5;
+                        int maxCol = 320;
+                        int midCol = maxCol/2;
+                        int row, pixel;
+                        bool isWhite = false;
+                        int firstWhite = 0;
+                        int lastWhite = 0;
+                        int topNum = 0;
+                        int leftNum = 0;
+                        int rightNum = 0;
+                        open_screen_stream();
 
-//Code for turning robot right
-int main (){
-init();
-int turnLeft(){
-set_motor(1,77.5); //Assume motor 1 is on the right
-sleep1(10,500000);
-set_motor(2,-155);//Turning right slowly
-sleep1(10,500000);
-return 0;
-}}
+/*                      connect_to_server(130.195.6.196, 1024);
+                        recieve_from_server("Please");
+                        send_to_server("123456");
+*/
+    char server[15]={'1','3','0','.','1','9','5','.','6','.','1','9','6'};
+    char message[24]={'P','l','e','a','s','e'};
+    int port = 1024;
+    connect_to_server(server, port);
+    send_to_server(message);
+    receive_from_server(message);
+    send_to_server(message);
+    printf("%s", message);
 
-//Code for turning robot left
-int main (){
-init();
-int turnLeft(){
-set_motor(1,155); //Assume motor 1 is on the right
-sleep1(10,500000);
-set_motor(2,-77.5);//Turning left slowly
-sleep1(10,500000);
-return 0;
-}}
+                        while(true) {
+                                take_picture();
+                                previous_error = error;
+                                error = 0;
+                                numWhitePixels = 0;
+                                firstWhite = 0;
+                                for(row=0; row<maxCol; row++){ //loop across image
+                                        pixel = get_pixel(midCol,row,3);
+                                        if(pixel>80) {
+                                                isWhite = true;
+                                                if(!firstWhite) firstWhite = row; //75 //0
+                                                lastWhite = row; //320 //0
+                                        }
+                                        error += (isWhite) ? 0 : (row-midCol);
+                                        if(isWhite) {
+                                                numWhitePixels++;
+                                        } else {
+                                                lastWhite = 0;
+                                        }
+                                        isWhite = false;
+                                }
+                                for(row=0; row<maxCol; row++) {
+                                        set_pixel(midCol, row, 255,0,0);
+                                }
+                                update_screen();
+                                if(numWhitePixels < 5) {
+                                        reverse(50, 0, 10000);
+                                        printf("No white pixels on camera\n");
+                                        error = 0;
+                                        total_error = 0;
+                                        error_diff = 0;
+                                        sleep1(0,100000);
+                                        continue;
+                                }
+                                if(numWhitePixels > 200 && numWhitePixels < 250) {
+                                        forward(50, 0, 900000);
+                                        if(firstWhite > 40 && (1-lastWhite) < 20) {
+                                                right();
+                                                rightNum += 1;
+                                                printf("%d", rightNum);
+                                        } else /*if(firstWhite < 30 && (1-lastWhite) > 50)*/ {
+                                                left();
+                                                leftNum += 1;
+                                                printf("%d", leftNum);
+                                        }
+                                        sleep1(0,100000);
+                                        continue;
+                                }
+                                if(numWhitePixels >= 250) { //WHITE STRIP AT TOP
+                                        topNum += 1;
+                                        printf("\nTOP: %d\n", topNum);
+                                }
+                                printf("\nFirst White: %d", firstWhite);
 
-//Code for making robot reverse slowly
-int main(){
-init();
-set_motor(1,-155);
-sleep1(10,500000);
-set_motor(2, 155);
-sleep1(10,500000);
-return 0;
-}
+                                total_error += error;
+                                error_diff = error - previous_error;
 
-//Code for making robot reverse slowly if something is detected by IR sensor
-int main (){
-init();
-int adc_reading;
-for(int i=0; i<1000; i++) { //loops
-adc_reading=read_analog(0);
-sleep1(0,500000);
-if (adc_reading < 150) {When IR reading is less than 150 motor turns opposite dir
-set_motor(1,-150);
-sleep1(0,500000);
-}
-else{
-set_motor(1,150);//if IR reading isn't less than 150 motor turns original dir
-sleep1(0,500000);
-}
-printf("reading = %d\n" , adc_reading);//Prints the adc reading for checking purposes
-}
-return 0;
-}
+                                pSignal = (error*kp);
+                                iSignal = (total_error*ki);
+                                dSignal = (error_diff*kd);
+
+                                totalSignal = (pSignal+iSignal+dSignal)/300;
+
+                                int leftspeed = (numWhitePixels > 0) ? 50-(totalSignal) : 0;
+                                int rightspeed = (numWhitePixels > 0) ? 50+(totalSignal) : 0;
+                                printf("\nL: %d R: %d | %d", leftspeed, rightspeed, error);
+                                printf("\nP: %d, I: %d, D: %d", pSignal, iSignal, dSignal);
+                                printf("\nWPixels: %d", numWhitePixels);
+
+                                set_motor(1, -leftspeed);
+                                set_motor(2, rightspeed);
+                                sleep1(0,10000);
+
+                        }
+
+
+                        //int left = read_analog(0);;
+                        //int right = read_analog(2);
+                        //int middle = left+right/2;
+                        /*if(left<10) {
+                                stop(500000);
+                                int time = 1000000/left;
+                                turn_right(150, time);
+                        }
+                        else if(right>10) {
+                                stop(500000);
+                                int time = 1000000/right;
+                                turn_left(150, time);
+                        }*/
+                //}
+        }
