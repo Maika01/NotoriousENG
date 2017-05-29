@@ -1,128 +1,184 @@
 #include <stdio.h>
 #include <time.h>
 #include "E101.h"
+
+//Moves the AV forward by the specified speed, and for the specified time.
 void forward(int speed, int s, int micros) {
 	set_motor(1, -speed);
 	set_motor(2, speed);
 	sleep1(s, micros);
 }
+//Moves the AV backward by the specified speed, and for the specified time.
 void reverse(int speed, int s, int micros) {
 	set_motor(1, speed);
 	set_motor(2, -speed);
 	sleep1(s, micros);
 }
+
+//Moves the AV to the right by the specified speed, and with a set time
 void right() {
 	int speed = 50;
 	set_motor(1, -speed);
 	set_motor(2, -speed);
 	sleep1(0, 500000);
 }
+
+//Moves the AV to the left by the specified speed, and with a set time
 void left() {
 	int speed = 50;
 	set_motor(1, speed);
 	set_motor(2, speed);
 	sleep1(0, 500000);
 }
+
+//Stops the AV for the specified amount of time.
 void stop(int s, int micros) {
 	set_motor(1, 0);
 	set_motor(2, 0);
 	sleep1(s, micros);
 }
-//straight//straight//straight//left//right//right//left//left//right//right
-//1	          //2	   //3   	//4    //5    //6   //7   //8   //9   //10
-	int main() {
-		init();
-		int error = 0;
-		int total_error = 0;
-		int previous_error = 0;
-		int error_diff = 0;
-		int numWhitePixels = 0;
-		int pSignal = 0;
-		int iSignal = 0;
-		int dSignal = 0;
-		int totalSignal = 0;
-		float kp = 0.5;
-		float ki = 0;
-		float kd = 0.5;
-		int maxCol = 320;
-		int midCol = maxCol/2;
-		int row, pixel;
-		int section = 1;
-		int quadrant = 1;
-		int speed = 50;
-		open_screen_stream();
 
-	    char server[15]={'1','3','0','.','1','9','5','.','6','.','1','9','6'};
-   		char message[24]={'P','l','e','a','s','e'};
-   		int port = 1024;
+//The main loop of the AV, containing the functions required to make it operational.
+int main() {
+	
+	//Initializes the hardware so the AV is able to use it.
+	init();
+	
+	//Initializes the variables so they are able to be used later on in the code.
+	int error, total_error, previous_error, error_diff = 0;
+	int numWhitePixels, numWhitePixelsTop = 0;
+	int pSignal, iSignal, dSignal, totalSignal = 0;
+	int col;
+	int section = 1;
+	int quadrant = 1;
+	
+	//Setting the kp, ki, and kd to the suitable values in order for the PID to work accurately.
+	float kp = 0.5;
+	float ki = 0.005;
+	float kd = 0.5;
+	
+	//Setting the speed at which the AV should move through the quadrants
+	int speed = 50;
+	
+	//Specifying the max dimensions of the Raspberry Pi camera module and getting the middle dimensions from this.
+	int maxCol = 320;
+	int midCol = maxCol/2;
+	int maxRow = 240;
+	int midRow = maxRow/2;
+	
+	//Setting the options and required messages in order to connect to the gate.
+    char server[15]={'1','3','0','.','1','9','5','.','6','.','1','9','6'};
+	char msg[24]={'P','l','e','a','s','e'};
+	int port = 1024;
+	
+	
+	//Connecting to the gate and sending the required messages to open it.
+	connect_to_server(server, port);
+	send_to_server(msg);
+	receive_from_server(msg);
+	send_to_server(msg);
+	
+	//Sleeps for 0.1 of a second so the AV does not run into the gate while it is being pulled up.
+	sleep1(0, 100000);
+	
+	//Setting quadrant to new quadrant
+	quadrant = 2;
+
+	//While loop to make sure the AV keeps on looping over its functions.
+	while(true) {
 		
-		connect_to_server(server, port);
-		send_to_server(message);
-		receive_from_server(message);
-		send_to_server(message);
-		printf("%s", message);
+		//Resets the error and numWhitePixels variable back to 0, and sets the previous error as a new loop has started.
+		previous_error = error;
+		error = 0;
+		numWhitePixels = 0;
+		
+		//Takes a picture of the tape below the AV.
+		take_picture();
+		
+		//Scans the middle row of the image for white pixels.
+		for(col=0; col<maxCol; col++){
 
-		while(true) {
-			take_picture();
-			previous_error = error;
-			error = 0;
-			numWhitePixels = 0;
-			for(row=0; row<maxCol; row++){ //loop across image
-				pixel = get_pixel(midCol,row,3);
-				if(pixel>105) {
-					numWhitePixels++;
-					error += 0;
-				} else {
-					error += (row-midCol);
+			//If the pixel is white, increases the numWhitePixels variable by one.
+			if(get_pixel(midRow,col,3)>80) {numWhitePixels++;}
+			
+			/* Gets the column number where the pixel is black (e.g. 60),
+			* Subtracts it by the middle column number (160),
+			* In order to give a positive or negative number (e.g. -100 [left]),
+			* Indicating the error. */
+			else {error += (col-midCol);}
+		}
+		/*if(numWhitePixels>300) {
+			if(quadrant != 3) {
+				//Scans the top row of the image for white pixels.
+				for(col=0; col<maxCol; col++) if(get_pixel(0,col,3)>80) numWhitePixelsTop++;
+
+				//If it has passed the test, this means it is in quadrant 3.
+				if(numWhitePixelsTop>300) {
+					quadrant = 30;
+					printf("\nSWITCHING TO QUADRANT 3\n");
 				}
 			}
-			for(row=0; row<maxCol; row++) {
-				set_pixel(midCol, row, 255,0,0);
-			}
-			update_screen();
-			if(numWhitePixels < 5) {
-				reverse(speed, 0, 100000);
-				printf("No white pixels on camera\n");
-				error = 0;
-				total_error = 0;
-				error_diff = 0;
-				continue;
-			}
-			/*if(numWhitePixels > 150) {
-				
+		}*/
+		if(numWhitePixels < 5) {
+			reverse(speed, 0, 100000);
+			printf("\nNo white pixels on camera");
+			error = 0;
+			total_error = 0;
+			error_diff = 0;
+			continue;
+		}
+
+		/*if(numWhitePixels > 200) {
+			if(quadrant==3) {
 				printf("\nSECTION NUMBER: %d\n", section);
 				
-				if(section>0) {
+				if(section==3||section==4||section==8||section==9||section==10) {
 					forward(speed, 0, 700000);
 					right();
-				} else if(section==1||section==3||section==8) {
+					reverse(speed, 0, 300000);
+					section += 1;
+								error = 0;
+			total_error = 0;
+			error_diff = 0;
+					continue;
+				} else if(section==2||section==7||section==8) {
 					forward(speed, 0, 700000);
 					left();
-				} else if(section==4){
+					reverse(speed, 0, 300000);
+					section += 1;
+								error = 0;
+			total_error = 0;
+			error_diff = 0;
+					continue;
+				} else if(section==5){
 					stop(0, 100000);
 					return 1;
+				} else {
+					forward(speed, 0, 100000);
+					sleep1(0, 300000);
+					section += 1;
+					continue;
 				}
-				section += 1;
-				sleep1(0, 100000);
-			}*/
-			total_error += error;
-			error_diff = error - previous_error;
-			
-			pSignal = (error*kp);
-			iSignal = (total_error*ki);
-			dSignal = (error_diff*kd);
-			
-			totalSignal = (pSignal+iSignal+dSignal)/300;
+			}
+		}*/
+		total_error += error;
+		error_diff = error - previous_error;
+		
+		pSignal = (error*kp);
+		iSignal = (total_error*ki);
+		dSignal = (error_diff*kd);
+		
+		totalSignal = (pSignal+iSignal+dSignal)/300;
 
-			int leftspeed = (numWhitePixels > 0) ? speed-(totalSignal) : 0;
-			int rightspeed = (numWhitePixels > 0) ? speed+(totalSignal) : 0;
-			printf("\nL: %d R: %d | %d", leftspeed, rightspeed, error);
-			printf("\nP: %d, I: %d, D: %d", pSignal, iSignal, dSignal);
-			printf("\nWPixels: %d", numWhitePixels);
-			
-			set_motor(1, -leftspeed);
-			set_motor(2, rightspeed);
-			sleep1(0,10000);
-			
-		}
+		int leftspeed = (numWhitePixels > 0) ? speed-(totalSignal) : 0;
+		int rightspeed = (numWhitePixels > 0) ? speed+(totalSignal) : 0;
+		printf("\nL: %d R: %d | %d", leftspeed, rightspeed, error);
+		printf("\nP: %d, I: %d, D: %d", pSignal, iSignal, dSignal);
+		printf("\nWPixels: %d", numWhitePixels);
+		
+		set_motor(1, -leftspeed);
+		set_motor(2, rightspeed);
+		sleep1(0, 10000);
+		
 	}
+}
